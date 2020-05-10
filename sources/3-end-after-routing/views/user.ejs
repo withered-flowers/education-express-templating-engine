@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halaman User</title>
+  <!-- Untuk menambahkan CSS / kosmetik tampilan -->
+  <link rel="stylesheet" type="text/css" href="...">
+
+  <!-- Untuk menambahkan script js tambahan -->
+  <script type="text/javascript" src="..."></script>
+</head>
+<body>
+  <!-- Data kita akan kita tuliskan di sini -->
+  Hello World
+
+  <!--
+    contoh scriptlet <% %> dan <%= %>
+  -->
+  <table>
+    <thead>
+      <tr>
+        <td>
+          Nomor Urut
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+  <!-- 
+    misalkan datanya nanti kita taruh di ejs nya dalam sebuah 
+    penampung yang namanya `dataUser`
+  -->
+      <% for(let i = 0; i < dataUser.length; i++) { %>
+        <tr>
+          <td> <%= dataUser[i].name %> </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+
+</body>
+</html>

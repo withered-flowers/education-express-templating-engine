@@ -6,7 +6,10 @@
     * res.render
     * Form
 1. [Handling Route Post](#handling-route-post)
-    * req.body
+    * Intro middleware
+      * Built-in middleware
+        * static
+        * body-parser + req.body
     * res.redirect
 1. [Express Router](#express-router)
 1. [Reference](#reference)
@@ -210,7 +213,7 @@ kita akan belajar untuk mengimplementasikan `ejs`.
 EJS atau `Embedded Javascript`, sesuai namanya, merupakan template di mana kita
 menyisipkan `javascript` di dalam `HTML` dengan format dan cara tertentu.
 
-Dalam express sendiri, semua file `tampilan` dalam hal ini adalah file `ejs`nya
+Dalam express sendiri, semua file `tampilan` dalam hal ini adalah file `ejs`-nya
 sendiri diletakkan pada folder `views`
 
 Jadi sekarang pada folder apps yang kita buat, tambahkan sebuah sub-folder dengan
@@ -237,11 +240,6 @@ Contoh file `user.ejs` bisa dilihat pada [Code 05](#code-05)
   <!-- Data kita akan kita tuliskan di sini -->
   Hello World
   
-  <!-- 
-    misalkan datanya nanti kita taruh di ejs nya dalam sebuah 
-    penampung yang namanya `dataUser`
-  -->
-
   <!--
     contoh scriptlet <% %> dan <%= %>
   -->
@@ -310,18 +308,547 @@ app.listen(PORT, () => {
 });
 ```
 
+Setelah berhasil mem-`passing` data via `res.render` sekarang kita akan mengubah
+file `user.ejs` supaya bisa membaca data yang telah di-`pass` tersebut.
+
+Kita mengubah file `user.ejs` nya menjadi seperti [Code 07](#code-07)
+
+### Code 07
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halaman User</title>
+  
+  <link rel="stylesheet" type="text/css" href="...">
+  <script type="text/javascript" src="..."></script>
+</head>
+<body>
+  Hello World
+  
+  <table>
+    <thead>
+      <tr>
+        <td>
+          Nomor Urut
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+    <!-- 
+      kita menangkap `dataUser` dari res.render di sini.
+    -->
+      <% for(let i = 0; i < dataUser.length; i++) { %>
+        <tr>
+          <td> <%= dataUser[i].name %> </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+
+</body>
+</html>
+```
+
+Dari kode diatas, kita sudah berhasil membaca file dari json, kemudian menampilkan
+via browser melalui tampilan non-`apa adanya` lagi yaitu dengan menggunakan 
+`res.render` dan `ejs`. Namun hal yang ada di atas ini semuanya adalah dalam bentuk
+`output`, bagaimana bila kita ingin menerima `input` dari tampilan yang 
+terdapat pada client atau browser kita?
+
+Solusinya adalah dengan menggunakan `Form` pada `ejs` kita.
+
 ### Form
 
-## Handling Route Post
+Form merupakan suatu tag dalam HTML yang digunakan untuk menerima input dari user 
+atau client atau browser untuk kemudian akan diproses ke backend / server untuk 
+diproses kembali.
 
-### req.body
+Misalkan dari kode yang ada di atas kita akan menambahkan sebuah file `ejs` dengan
+nama `user-input.ejs` dengan kode yang dapat dilihat pada [Code 08](#code-08)
+
+### Code 08
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+  <!-- Buat form start dari sini -->
+  <form action="/user/get-form-handler" method="get">
+    
+    <label for="label-nama">Input Nama</label>
+    <input type="text" id="label-nama" name="label-nama">
+
+    <label for="label-password">Input Password</label>
+    <input type="text" id="label-password" name="label-password">
+
+    <button type="submit">Login</button>
+  </form>
+  <!-- End buat form -->
+</body>
+</html>
+```
+
+Setelah membuat `Form`-nya, sekarang kita akan coba untuk membuat `handler` 
+pada aplikasi express yang kita miliki, dapat dilihat pada [Code 09](#code-09)
+
+### Code 09
+```javascript
+const fs = require('fs');
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+app.get('/user', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+// Ini adalah app get untuk menampilkan form nya
+app.get('/user/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+// Ini adalah app get untuk mengambil response dari form-nya
+app.get('/user/get-form-handler', function userGETformHandler(req, res) {
+// Cara untuk mendapatkan value dari input form yang memiliki hyphen atau dash
+  res.send(req.query["label-nama"]);
+});
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Apabila apps yang kita buat untuk login terjadi seperti ini, maka tidak akan ada 
+yang mau bukan (karena passwordnya terlihat kasat mata ?)
+
+Lalu bagaimana cara kita mengakalinya?  
+Ingat dalam `Form` ada 2 `method` yang umum digunakan, yaitu `GET` dan `POST`.
+
+Sekarang kita akan coba untuk menggunakan method `POST` dalam kode kita.
+Kita akan memodifikasi `user-input.ejs` dan `app.js` kita untuk diubah ke `POST`, 
+kode dapat dilihat pada [Code 10](#code-10) dan [Code 11](#code-11)
+
+### Code 10
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+  <!-- Ganti method form get menjadi post -->
+  <form action="/user/get-form-handler" method="post">
+    
+    <label for="label-nama">Input Nama</label>
+    <input type="text" id="label-nama" name="label-nama">
+
+    <label for="label-password">Input Password</label>
+    <input type="text" id="label-password" name="label-password">
+
+    <button type="submit">Login</button>
+  </form>
+  
+</body>
+</html>
+```
+
+### Code 11
+```javascript
+const fs = require('fs');
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+app.get('/user', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+app.get('/user/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+app.get('/user/get-form-handler', function userGETformHandler(req,res) {
+  res.send(req.query["label-nama"]);
+});
+
+// Di sini kita mengganti app.get menjadi app.post
+app.post('/user/get-form-handler', function userGETformHandler(req, res) {
+  res.send(req.query["label-nama"]);
+});
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Kemudian kita coba untuk me-restart aplikasi kita dan kita coba jalankan 
+(ulangi input dari `/user/get-form`) kemudian apa hasilnya?
+
+Ya, hasilnya adalah ***putih bersih kinclong*** bukan? Tidak ada satu pun yang muncul.
+
+Hal ini terjadi karena cara untuk meng-handle POST input pada Express *bukan*-lah 
+dengan `req.query` !
+
+## Handling Route Post
+Kemudian bagaimana cara kita meng-handle POST input dari `ejs` ke `express` ?  
+Sebelum kita meng-handle masalah ini, ada baiknya kita mengetahui terlebih dahulu
+apa itu `Middleware` pada `express`.
+
+### Intro to Middleware
+Middleware adalah sebuah fungsi (hayo fungsi dalam fungsi, namanya apa?) yang memiliki
+akses terhadap objek request `req` dan objek response `res`, dan sebuah fungsi 
+selanjutnya *callback* yang dinamakan dengan `next` untuk memanipulasi / mendapatkan
+suatu data yang ada.
+
+Ada beberapa tipe Middleware, namun yang akan kita fokuskan di sini adalah middleware
+yang sudah menjadi bawaan dalam express yaitu `express.static` dan `express.urlencoded` atau umumnya disebut dengan `body-parser`.
+
+Penggunaan middleware umumnya adalah dengan menggunakan keyword `use`
+
+Contoh:  
+`app.use( middlewareFunctionHere );`
+
+### express.static
+Merupakan middleware yang digunakan pada express untuk menyediakan file statik atau
+`asset` pada aplikasi kita yang berupa file / text / script / css atau gambar yang
+diletakkan pada `folder` tertentu pada aplikasi kita.
+
+Contoh penggunaannya (tidak dibahas terlalu dalam)
+
+### Code 12
+```javascript
+const fs = require('fs');
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+// Tambahkan penggunaan untuk penyedia asset di sini
+// misalknya kita ingin meletakkan asset yang ada pada folder public
+// dengan endpoint /public juga
+app.use(express.static('public'));
+
+// Apabila kita ingin menaruh pada folder public2
+// namun mengaksesnya dari endpoint asset
+app.use('/asset', express.static('public2'));
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+app.get('/user', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+app.get('/user/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+app.get('/user/get-form-handler', function userGETformHandler(req,res) {
+  res.send(req.query["label-nama"]);
+});
+
+app.post('/user/get-form-handler', function userGETformHandler(req, res) {
+  res.send(req.query["label-nama"]);
+});
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Sehingga nanti, semua file tersebut bisa diakses oleh aplikasi yang kita buat via
+endpoint `/public` untuk folder `public` dan `/asset` untuk folder `public2`
+
+### body-parser + req.body
+Kembali ke permasalahan sebelumnya, untuk dapat membaca data dari HTML Form dengan
+method `post`, Express memperkenalkan sebuah middleware dengan nama `body-parser`.
+
+Setelah menggunakan `body-parser` ini, data dapat diterima **BUKAN** dengan
+`req.query` melainkan dengan mengakses `req.body`. Contoh kode perubahan pada `app.js`
+dapat dilihat pada [Code 13](#code-13)
+
+### Code 13
+```javascript
+const fs = require('fs');
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+app.use(express.static('public'));
+app.use('/asset', express.static('public2'));
+
+// Middleware bawaan express yang digunakan untuk
+// dapat menerima POST dari ejs
+app.use(express.urlencoded({ extended: true }));
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+app.get('/user', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+app.get('/user/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+app.get('/user/get-form-handler', function userGETformHandler(req,res) {
+  res.send(req.query["label-nama"]);
+});
+
+app.post('/user/get-form-handler', function userGETformHandler(req, res) {
+// Gunakan req.body, bukan req.query untuk mengambil input dari ejs form POST
+  res.send(req.body["label-nama"]);
+});
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Kemudian coba kita me-restart aplikasi kita kemudian kita isi form ulang lagi dari
+endpoint `/user/get-form`, input `label-nama` sekarang sudah berhasil didapatkan 
+bukan?
+
+Selamat Anda sudah berhasil menguasai HTML Form dan cara untuk mendapatkan inputnya
+sampai di sini !
+
+Kemudian selanjutnya, kita telusuri kembali, pada aplikasi web umumnya, ketika 
+berhasil melakukan login, umumnya client akan di-**arah**-kan ke halaman lainnya 
+bukan?
 
 ### res.redirect
+Pengarahan halaman seperti aplikasi yang umumnya kita gunakan ini istilahnya 
+adalah `redirect`. Dan pada express ini pun, kita bisa melakukan `redirect` tersebut
+dengan `res.redirect`
+
+Sekarang kita akan coba menambahkan pada aplikasi yang kita gunakan, untuk dapat 
+melakukan redirect ketika user sudah melakukan input.
+
+Mari kita ubah code `app.js` menjadi [Code 14](#code-14)
+
+### Code 14
+```javascript
+const fs = require('fs');
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+app.use(express.static('public'));
+app.use('/asset', express.static('public2'));
+
+app.use(express.urlencoded({ extended: true }));
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+app.get('/user', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+app.get('/user/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+app.get('/user/get-form-handler', function userGETformHandler(req,res) {
+  res.send(req.query["label-nama"]);
+});
+
+app.post('/user/get-form-handler', function userGETformHandler(req, res) {
+  // Untuk keperluan debugging
+  console.log(`Username: ${req.body['label-nama']}`);
+  console.log(`Password: ${req.body['label-password']}`);
+  
+  // Di sini kita akan mengembalikan lagi ke halaman input username dan password.
+  // dengan menggunakan res.redirect
+  res.redirect('/user/get-form');
+});
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Dapat dilihat bahwa pada `res.redirect` ini **TIDAK** dapat menerima data apapun,
+berbeda dengan `res.render` ataupun `res.send`
+
+Dari kode di atas, dapat dilihat apabila kita melakukan penambahan endpoint pada
+aplikasi kita, maka file `app.js` ini akan bertambah semakin banyak, besar, dan
+membingungkan bukan?
 
 ## Express Router
+Dalam membuat aplikasi yang kita buat dengan cara di atas, semakin banyak alur endpoint dalam aplikasi kita, tentunya akan semakin besar juga file `app.js` 
+yang kita miliki bukan?
+
+Dalam express, ada sebuah cara untuk mengatasi hal tersebut, yaitu dengan 
+memisah rute `routing` ke dalam file lainnya supaya lebih mudah dibaca.
+
+Cara ini dikenal dengan istilah `Express Router`.
+
+Untuk menggunakan ini, kita perlu membuat sebuah folder dengan nama `routes`
+terlebih dahulu.
+
+Kemudian kita akan memindahkan semua yang memiliki endpoint `/user` di depannya
+ke dalam satu file tersendiri dengan nama `user-route.js`
+
+Endpoint yang dipindahkan adalah:
+* GET /user
+* GET /user/get-form
+* GET /user/get-form-handler
+* POST /user/get-form-handler
+
+Setelah itu kita juga akan memodifikasi code pada `user-route.js` sedikit sehingga
+menjadi seperti [Code 15](#code-15)
+
+### Code 15
+```javascript
+// Di sini kita akan menggunakan express Router
+const express = require('express');
+const router = express.Router();
+
+// Jangan lupa untuk memindahkan fs ke sini
+const fs = require('fs');
+
+// Di sini semua yang awalnya app.get atau app.post
+// kita ganti menjadi router.get atau router.post
+// Kemudian karena endpoint ini akan kita assign 
+// `awalannya` pada app.js kita, maka awalannya tersebut
+// akan kita buang, dalam hal ini awalannya adalah
+// /user <---- akan kita replace menjadi / saja
+
+router.get('/', function userGETHandler(req, res) {
+  let data = fs.readFileSync('./0-generated.json', 'utf-8');
+  data = JSON.parse(data);
+
+  res.render('user', { 
+    dataUser: data 
+  });
+});
+
+router.get('/get-form', function userGETformRender(req, res) {
+  res.render('user-input');
+});
+
+router.get('/get-form-handler', function userGETformHandler(req,res) {
+  res.send(req.query["label-nama"]);
+});
+
+router.post('/get-form-handler', function userGETformHandler(req, res) {
+  console.log(`Username: ${req.body['label-nama']}`);
+  console.log(`Password: ${req.body['label-password']}`);
+  
+  res.redirect('/user/get-form');
+});
+
+// Jangan lupa untuk mengexport karena kita akan menggunakan ini pada app.js
+module.exports = router;
+```
+
+Kemudian setelah `user-route.js` sudah kita modifikasi, saatnya kita memodifikasi
+`app.js` agar dapat menerima rute tambahan ini dengan `awalan` berupa `/user`.
+
+Hasil modifikasi `app.js` dapat dilihat pada [Code 16](#code-16)
+
+### Code 16
+```javascript
+const express = require('express');
+const app = express();
+
+const PORT = 3000;
+
+// Di sini kita akan memanggil rute tambahan yang ada.
+const user = require('./routes/user-route');
+
+app.use(express.static('public'));
+app.use('/asset', express.static('public2'));
+
+app.use(express.urlencoded({ extended: true }));
+
+app.set('view engine', 'ejs');
+
+app.get('/', function rootGETHandler(req, res) {
+  res.send("Hello Root");
+});
+
+// Di sini kita akan meng-assign semua rute yang ada pada `user-route` untuk
+// menerima awalan rute dengan nama /user
+app.use('/user', user);
+
+app.listen(PORT, () => {
+  console.log(`Aplikasi berjalan pada port ${PORT}`);
+});
+```
+
+Dari kode di atas, kita sudah berhasil untuk menggunakan express Router
+dengan baik. 
+
+Selamat !
 
 ## Reference
 * [Express JS Documentation](https://expressjs.com/en/api.html#express)
 * [Express Templating Engine - EJS How to](https://github.com/mde/ejs/wiki/Using-EJS-with-Express)
+* [Express JS - Using Middleware](https://expressjs.com/en/guide/using-middleware.html)
+* [Express JS - Router](https://expressjs.com/en/guide/routing.html)
 * [EJS Documentation](https://ejs.co/#docs)
 * [Nodemon - how to install](https://nodemon.io/)
